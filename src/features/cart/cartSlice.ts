@@ -1,21 +1,29 @@
-import { createSlice, PayloadAction ,createSelector} from '@reduxjs/toolkit';
+import { createSlice, PayloadAction ,createSelector,createAsyncThunk} from '@reduxjs/toolkit';
 import { RootState } from '../../app/store';
+import { checkout,CartItems } from '../../app/api';
 
 type CheckoutState="LOADING" | "READY"| "ERROR"
 export interface CartState{
     items:{
         [ProductID:string]:number
     },
-    checkoutState:CheckoutState
+    checkoutState:CheckoutState,
+    errorMessage:string
 }
 
 
 const initialState:CartState = {
     items:{},
-     checkoutState:"READY"
+     checkoutState:"READY",
+     errorMessage:""
 
 }
 
+
+export const checkoutCart =createAsyncThunk("cart/checkout",async(items:CartItems,)=>{
+    const response = await checkout(items);
+    return response
+})  
 
 const cartSlice= createSlice({
     name: 'cart',
@@ -39,8 +47,23 @@ const cartSlice= createSlice({
         }
     },
     extraReducers: function (builder){
-          builder.addCase("cart/checkout/pending",(state,action)=>{
+          builder.addCase(checkoutCart.pending,(state,action)=>{
             state.checkoutState="LOADING";
+          })
+          builder.addCase(checkoutCart.fulfilled,(state,action:PayloadAction<{success:boolean}>)=>{
+            const {success} =action.payload
+            if(success){
+                state.checkoutState="READY";
+                state.items={};
+
+            }else{
+                state.checkoutState="ERROR"  
+            }
+            state.checkoutState="READY";
+          })
+          builder.addCase(checkoutCart.rejected,(state,action)=>{
+            state.checkoutState="ERROR";
+            state.errorMessage= action.error.message || " "
           })
     }
 })
